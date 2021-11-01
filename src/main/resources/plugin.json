@@ -1,0 +1,7 @@
+{
+  "main": "cn.chuanwise.xiaoming.essentials.EssentialsPlugin",
+  "name": "essentials",
+  "alias": "基础插件",
+  "author": "ThymeChen",
+  "version": "1.0.4-dev"
+}
