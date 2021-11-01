@@ -8,4 +8,4 @@
   
 ## GroupManager
 
-  原Xiaoming-Admin插件的功能
+  原 [Xiaoming-Admin](https://github.com/ThymeChen/Xiaoming-Admin) 插件的功能
