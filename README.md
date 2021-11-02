@@ -23,7 +23,7 @@
 | cooldown | int | 5 | 调用冷却（需要将 enableCallLimit 设置为 true） |
 | period | int | 300 | 调用周期（需要将 enableCallLimit 设置为 true） |
 | maxCall | int | 10 | 调用周期内允许的最大调用次数（需要将 enableCallLimit 设置为 true） |
-| bannedPlugins | Set<String> | null | 要屏蔽的插件（插件名的集合，默认为空） |
+| bannedPlugins | Set<String> | 无 | 要屏蔽的插件（插件名的集合，默认为空） |
   
 ## GroupManager
 
@@ -34,10 +34,15 @@
 配置文件分为 “config.json” 和 “data.json”
 
   > config.json
-|  表头  | 表头  |
-|  :---: | :---: |
-| 单元格  | 单元格 |
-| 单元格  | 单元格 |
-
+  
+|  配置项  | 类型  | 默认值 | 说明 |
+|  :---: | :---: | :----: | :----: |
+| defaultMuteTime  | Map<Long, Integer> | <群号， 10（单位：分钟）> | 默认禁言时间，默认每个群均为10分钟 |
+| ignoreUsers  | List<Long> | 无 | 要屏蔽的用户（QQ号的集合） |
+| antiRecall | Map<Long, Boolean> | 空 | 是否开启防撤回（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
+| antiFlash | Map<Long, Boolean> | 空 | 是否开启防闪照（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
+| enableAutoVerify | Map<Long, Boolean> | 空 | 是否开启自动审核（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
+| autoReject | Map<Long, Boolean> | 空 | 是否开启自动审核不通过时拒绝加群（默认每个均为群关闭），由 群号 和 Boolean 组成的键值对 |
+  
   > data.json
   
