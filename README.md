@@ -44,6 +44,8 @@
 | enableAutoVerify | Map<Long, Boolean> | 无 | 是否开启自动审核（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
 | autoReject | Map<Long, Boolean> | <群号， false> | 是否开启自动审核不通过时拒绝加群（默认每个均为群关闭），由 群号 和 Boolean 组成的键值对。若为false，bot会私发群主加群申请的详情；若为true，则直接拒绝 |
   
+  
+  
   > data.json
   
 |  配置项  | 类型  | 默认值 | 说明 |
