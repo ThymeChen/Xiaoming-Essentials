@@ -39,10 +39,15 @@
 |  :---: | :---: | :----: | :----: |
 | defaultMuteTime  | Map<Long, Integer> | <群号， 10（单位：分钟）> | 默认禁言时间，默认每个群均为10分钟 |
 | ignoreUsers  | List<Long> | 无 | 要屏蔽的用户（QQ号的集合） |
-| antiRecall | Map<Long, Boolean> | 空 | 是否开启防撤回（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
-| antiFlash | Map<Long, Boolean> | 空 | 是否开启防闪照（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
-| enableAutoVerify | Map<Long, Boolean> | 空 | 是否开启自动审核（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
-| autoReject | Map<Long, Boolean> | 空 | 是否开启自动审核不通过时拒绝加群（默认每个均为群关闭），由 群号 和 Boolean 组成的键值对 |
+| antiRecall | Map<Long, Boolean> | 无 | 是否开启防撤回（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
+| antiFlash | Map<Long, Boolean> | 无 | 是否开启防闪照（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
+| enableAutoVerify | Map<Long, Boolean> | 无 | 是否开启自动审核（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
+| autoReject | Map<Long, Boolean> | <群号， false> | 是否开启自动审核不通过时拒绝加群（默认每个均为群关闭），由 群号 和 Boolean 组成的键值对。若为false，bot会私发群主加群申请的详情；若为true，则直接拒绝 |
   
   > data.json
   
+|  配置项  | 类型  | 默认值 | 说明 |
+|  :---: | :---: | :----: | :----: |
+| groupKeys | Map<Long, Set<String>> | 无 | 群聊关键词，用于撤回敏感消息+禁言触发者，由 群号 和 散列 组成的键值对（缺省或散列为空时不触发撤回+禁言） |
+| autoVerify | Map<Long, Set<String>> | 无 | 自动审核，若用户加群申请中包含 散列 中任意一条规则时，自动通过申请（忽略大小写），由 群号 和 散列 组成的键值对（缺省或散列为空时会私发群主加群申请的详情） |
+| join | Map<Long, String> | 无 | 迎新词，可添加图片，由 群号 和 String 组成的键值对（缺省或字符串为空时不触发迎新） |
