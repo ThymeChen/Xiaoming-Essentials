@@ -23,7 +23,7 @@
 | cooldown | int | 5 | 调用冷却（需要将 enableCallLimit 设置为 true） |
 | period | int | 300 | 调用周期（需要将 enableCallLimit 设置为 true） |
 | maxCall | int | 10 | 调用周期内允许的最大调用次数（需要将 enableCallLimit 设置为 true） |
-| bannedPlugins | Set<String> | 无 | 要屏蔽的插件（插件名的集合，默认为空） |
+| bannedPlugins | Set<String> | 无 | 要屏蔽的插件（插件名的散列，默认为空） |
   
 ## GroupManager（群聊管理器）
 
