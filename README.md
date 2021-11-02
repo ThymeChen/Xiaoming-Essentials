@@ -42,7 +42,7 @@
 | antiRecall | Map<Long, Boolean> | 无 | 是否开启防撤回（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
 | antiFlash | Map<Long, Boolean> | 无 | 是否开启防闪照（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
 | enableAutoVerify | Map<Long, Boolean> | 无 | 是否开启自动审核（缺省时关闭），由 群号 和 Boolean 组成的键值对 |
-| autoReject | Map<Long, Boolean> | <群号， false> | 是否开启自动审核不通过时拒绝加群（默认每个均为群关闭），由 群号 和 Boolean 组成的键值对。若为false，bot会私发群主加群申请的详情；若为true，则直接拒绝 |
+| autoReject | Map<Long, Boolean> | <群号， false> | 是否开启自动审核不通过时拒绝加群（默认每个均为群关闭），由 群号 和 Boolean 组成的键值对。若为false，申请未命中规则时bot会私发群主加群申请的详情；若为true，则直接拒绝 |
   
   
   
