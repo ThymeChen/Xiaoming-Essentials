@@ -1,8 +1,8 @@
 # Xiaoming-Essentials
 
-本插件分为 CoreManager 和 GroupManager 两部分
+本插件分为 CoreManager（内核管理器） 和 GroupManager（群聊管理器） 两部分
 
-## CoreManager
+## CoreManager（内核管理器）
 
 小明内核原有的部分功能实现
   
@@ -25,7 +25,7 @@
 | maxCall | int | 10 | 调用周期内允许的最大调用次数（需要将 enableCallLimit 设置为 true） |
 | bannedPlugins | Set<String> | 无 | 要屏蔽的插件（插件名的集合，默认为空） |
   
-## GroupManager
+## GroupManager（群聊管理器）
 
 原 [Xiaoming-Admin](https://github.com/ThymeChen/Xiaoming-Admin) 插件的功能
 
