@@ -2,7 +2,9 @@
 
 本插件分为 CoreManager（内核管理器） 和 GroupManager（群聊管理器） 两部分
 
-## CoreManager（内核管理器）
+  ！！！请不要随意修改配置文件！！！
+
+## CoreManager
 
 小明内核原有的部分功能实现
   
@@ -23,9 +25,10 @@
 | cooldown | int | 5 | 调用冷却（需要将 enableCallLimit 设置为 true） |
 | period | int | 300 | 调用周期（需要将 enableCallLimit 设置为 true） |
 | maxCall | int | 10 | 调用周期内允许的最大调用次数（需要将 enableCallLimit 设置为 true） |
+| messageCache | int | 50 | 最大消息缓存队列的长度 |
 | bannedPlugins | Set<String> | 无 | 要屏蔽的插件（插件名的散列，默认为空） |
   
-## GroupManager（群聊管理器）
+## GroupManager
 
 原 [Xiaoming-Admin](https://github.com/ThymeChen/Xiaoming-Admin) 插件的功能
 
