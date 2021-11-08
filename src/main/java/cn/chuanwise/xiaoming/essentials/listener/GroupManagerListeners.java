@@ -1,5 +1,6 @@
 package cn.chuanwise.xiaoming.essentials.listener;
 
+import cn.chuanwise.toolkit.sized.SizedCopyOnWriteArrayList;
 import cn.chuanwise.util.CollectionUtil;
 import cn.chuanwise.util.MapUtil;
 import cn.chuanwise.xiaoming.essentials.EssentialsPlugin;
@@ -20,39 +21,52 @@ import net.mamoe.mirai.message.code.MiraiCode;
 import net.mamoe.mirai.message.data.At;
 import net.mamoe.mirai.message.data.FlashImage;
 import net.mamoe.mirai.message.data.MessageChain;
+import net.mamoe.mirai.message.data.PlainText;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
-    //Map<Long, Integer> warnCount = new HashMap<>();
-    static Map<Long, Set<String>> keys = new HashMap<>(); // 关键词的正则表达式
+    public static Map<Long, Set<Pattern>> keys = new HashMap<>(); // 关键词的正则表达式
+    public List<MessageEvent> messageEvents;    // 最近消息缓存
 
     static {
         GroupManagerData groupManagerData = EssentialsPlugin.INSTANCE.getGmData();
         for (long group : groupManagerData.getGroupKeys().keySet()) {
             for (String str : groupManagerData.getGroupKeys().get(group)) {
-                String regex = "/" + str + "/i";
-                Set<String> set = MapUtil.getOrPutSupply(keys, group, HashSet::new);
-                set.add(regex);
+                Pattern pattern = Pattern.compile(str, Pattern.CASE_INSENSITIVE);
+                MapUtil.getOrPutSupply(keys, group, HashSet::new).add(pattern);
             }
         }
     }
 
+    @Override
+    public void onRegister() {
+        messageEvents = new SizedCopyOnWriteArrayList<>(plugin.getCoreConfig().getMessagesCache());
+    }
+
+    // 将消息加进缓存
+    @EventListener(listenCancelledEvent = true)
+    public void addMessageEvents(MessageEvent event) {
+        messageEvents.add(event);
+    }
+
     // bot加入新群
     @EventListener
-    public void joinNewGroup(BotJoinGroupEvent botJoinGroupEvent) {
+    public void joinNewGroup(@NotNull BotJoinGroupEvent botJoinGroupEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
         final long group = botJoinGroupEvent.getGroupId();
 
-        gmConfiguration.defaultMuteTime.put(group, 10L);
-        gmConfiguration.autoReject.put(group, false);
+        gmConfiguration.getDefaultMuteTime().put(group, 10);
+        gmConfiguration.getAutoReject().put(group, false);
 
         xiaomingBot.getFileSaver().readyToSave(gmConfiguration);
     }
 
-    // 屏蔽（优先级为高，凌驾于默认之上）
+    // 屏蔽（取消交互事件）
     @EventListener(priority = ListenerPriority.HIGH)
-    public void matchIgnoreUsers(InteractEvent interactEvent) {
+    public void matchIgnoreUsers(@NotNull InteractEvent interactEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
         final long qq = interactEvent.getContext().getUser().getCode();
 
@@ -63,9 +77,8 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
 
     // 关键词撤回（最高优先级，不受 ignoreUsers 影响）
     @EventListener(priority = ListenerPriority.HIGHEST)
-    public void recallKey(MessageEvent messageEvent) {
+    public void recallKey(@NotNull MessageEvent messageEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
-        final GroupManagerData gmData = plugin.getGmData();
 
         if (!(messageEvent.getUser() instanceof GroupXiaomingUser))
             return;
@@ -74,20 +87,20 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         long group = user.getGroupCode();
 
         Message message = messageEvent.getMessage();
-        String mes = message.serialize();
+        String mes = message.serialize().toLowerCase(Locale.ROOT);
 
         final int botPermLevel = Objects.requireNonNull(xiaomingBot.getMiraiBot().getGroup(((GroupXiaomingUser) messageEvent.getUser()).getGroupCode())).getBotPermission().getLevel();
         final int memberPermLevel = user.getMemberContact().getPermission().getLevel();
 
-        if (gmData.getGroupKeys().containsKey(group) && gmData.getGroupKeys().get(group) != null) {
+        if (keys.containsKey(group)) {
             if (mes.contains("删除关键词") || mes.contains("添加关键词"))
                 return;
 
             if (botPermLevel <= memberPermLevel)
                 return;
 
-            for (String key : gmData.getGroupKeys().get(group)) {
-                if (mes.toLowerCase().contains(key.toLowerCase()))
+            for (Pattern key : keys.get(group)) {
+                if (key.matcher(mes).find())
                     try {
                         message.recall();
                         messageEvent.cancel();
@@ -106,7 +119,7 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
 
     // 迎新
     @EventListener
-    public void join(MemberJoinEvent joinEvent) {
+    public void join(@NotNull MemberJoinEvent joinEvent) {
         final GroupManagerData gmData = plugin.getGmData();
 
         final Long group = joinEvent.getGroupId();
@@ -120,8 +133,8 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
     }
 
     // 防撤回
-    @EventListener
-    public void antiRecall(MessageRecallEvent.GroupRecall recall) {
+    @EventListener(priority = ListenerPriority.LOW, listenCancelledEvent = true)
+    public void antiRecall(@NotNull MessageRecallEvent.GroupRecall recall) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
 
         final long groupCode = recall.getGroup().getId();   // 群号
@@ -141,7 +154,7 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
             return;
 
         // 获得被撤回的人最近发送的消息缓存
-        final MessageEvent messageEvent = CollectionUtil.first(xiaomingBot.getContactManager().getRecentMessageEvents(), event -> {
+        final MessageEvent messageEvent = CollectionUtil.first(messageEvents, event -> {
             final XiaomingUser user = event.getUser();
             return user instanceof GroupXiaomingUser &&
                     ((GroupXiaomingUser) user).getGroupCode() == groupCode &&
@@ -151,18 +164,18 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         if (Objects.isNull(messageEvent)) {
             // message not found
             xiaomingBot.getContactManager().sendGroupMessage(groupCode, new At(operatorCode).serializeToMiraiCode()
-                    + " 刚刚撤回了 " + new At(authorCode) + " 的消息，但时间找不到");
+                    + " 刚刚撤回了 " + new At(authorCode).serializeToMiraiCode() + " 的消息，但时间找不到");
         } else {
             final Message message = messageEvent.getMessage();
 
             xiaomingBot.getContactManager().sendGroupMessage(groupCode, new At(operatorCode).serializeToMiraiCode()
-                    + " 刚刚撤回了 " + new At(authorCode) + " 的消息：\n" + message.serialize());
+                    + " 刚刚撤回了 " + new At(authorCode).serializeToMiraiCode() + " 的消息：\n" + message.serialize());
         }
     }
 
     // 防闪照
     @EventListener
-    public void antiFlash(GroupMessageEvent groupMessageEvent) {
+    public void antiFlash(@NotNull GroupMessageEvent groupMessageEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
         final Long group = groupMessageEvent.getGroup().getId();
         final long qq = groupMessageEvent.getSender().getId();
@@ -183,12 +196,12 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         xiaomingBot.getContactManager().sendGroupMessage(group, new At(qq).serializeToMiraiCode() +
                 " 发送了一张闪照，原图为：\n" + flashImage.getImage());
 
-        //xiaomingBot.getContactManager().getGroupContact(group).sendMessage(new PlainText(flashImage.toString()));
+        xiaomingBot.getContactManager().getGroupContact(group).get().sendMessage(new PlainText(flashImage.toString()));
     }
 
     // 根据 miraiCode 发送闪照原图（仅限私聊）
     @EventListener
-    public void flash(MessageEvent messageEvent) {
+    public void flash(@NotNull MessageEvent messageEvent) {
         GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
         XiaomingUser user = messageEvent.getUser();
 
@@ -211,69 +224,46 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
     // 加群自动审核
     @EventListener
     public void autoVerify(MemberJoinRequestEvent requestEvent) {
-        xiaomingBot.getScheduler().run(() -> {
-            final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
-            final GroupManagerData gmData = plugin.getGmData();
+        final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
+        final GroupManagerData gmData = plugin.getGmData();
 
-            final long group = requestEvent.getGroupId();
-            XiaomingUser owner = xiaomingBot.getContactManager().getGroupContact(group).get().getOwner().getUser();
-            String request = requestEvent.getMessage();
+        final long group = requestEvent.getGroupId();
+        XiaomingUser owner = xiaomingBot.getContactManager().getGroupContact(group).get().getOwner().getUser();
+        String request = requestEvent.getMessage();
 
-            if (!gmConfiguration.getEnableAutoVerify().containsKey(group))
-                return;
+        if (!gmConfiguration.getEnableAutoVerify().containsKey(group))
+            return;
 
-            if (gmData.autoVerify.get(group) == null
-                    || !gmConfiguration.getEnableAutoVerify().get(group)
-                    || !gmData.autoVerify.containsKey(group)) {
-                owner.sendMessage("「" + requestEvent.getFromId()
-                        + "(" + requestEvent.getFromNick() + ")」向你所管理的群聊「" + group + "("
-                        + xiaomingBot.getContactManager().getGroupContact(group).get().getAlias() + "）」发送了一条加群请求，其具体内容为：\n"
-                        + request);
-                return;
-            }
+        if (gmData.autoVerify.get(group) == null
+                || !gmConfiguration.getEnableAutoVerify().get(group)
+                || !gmData.autoVerify.containsKey(group)) {
+            owner.sendMessage("「" + requestEvent.getFromId()
+                    + "(" + requestEvent.getFromNick() + ")」向你所管理的群聊「" + group + "("
+                    + xiaomingBot.getContactManager().getGroupContact(group).get().getAlias() + "）」发送了一条加群请求，其具体内容为：\n"
+                    + request);
+            return;
+        }
 
-            for (String key : gmData.autoVerify.get(group)) {
-                if (request.toLowerCase().contains(key.toLowerCase())) {
-                    try {
-                        requestEvent.accept();
-                        return;
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        xiaomingBot.getContactManager().sendGroupMessage(group, "加群自动审核时出现错误，请到后台查看报错");
-                        return;
-                    }
-                }
-            }
-
-            if (gmConfiguration.getAutoReject().get(group)) {
-                requestEvent.reject(false, "回答错误，不予通过");
-                return;
-            } else {
-                owner.sendMessage("「" + requestEvent.getFromId() + "("
-                        + requestEvent.getFromNick() + ")」向你所管理的群聊「" + group + "("
-                        + xiaomingBot.getContactManager().getGroupContact(group).get().getAlias() + "）」发送了一条加群请求，其具体内容为：\n"
-                        + request/* + "\n请回复「同意」来通过加群请求，其他任何回复都将拒绝加群请求"*/);
-/*
+        for (String key : gmData.autoVerify.get(group)) {
+            if (request.toLowerCase().contains(key.toLowerCase())) {
                 try {
-                    Message reply = owner.nextMessageOrExit();
-
-                    if (Objects.equals(reply.serialize(), "同意")) {
-                        requestEvent.accept();
-                        owner.sendMessage("已同意「" + requestEvent.getFromId()
-                                + "(" + requestEvent.getFromNick() + ")」的加群请求");
-                    } else {
-                        requestEvent.reject();
-                        owner.sendMessage("已拒绝「" + requestEvent.getFromId()
-                                + "(" + requestEvent.getFromNick() + ")」的加群请求");
-                    }
+                    requestEvent.accept();
                     return;
-
                 } catch (Exception e) {
                     e.printStackTrace();
+                    xiaomingBot.getContactManager().sendGroupMessage(group, "加群自动审核时出现错误，请到后台查看报错");
                     return;
                 }
-*/
             }
-        });
+        }
+
+        if (gmConfiguration.getAutoReject().get(group)) {
+            requestEvent.reject(false, "回答错误，不予通过");
+        } else {
+            owner.sendMessage("「" + requestEvent.getFromId() + "("
+                    + requestEvent.getFromNick() + ")」向你所管理的群聊「" + group + "("
+                    + xiaomingBot.getContactManager().getGroupContact(group).get().getAlias() + "）」发送了一条加群请求，其具体内容为：\n"
+                    + request);
+        }
     }
 }

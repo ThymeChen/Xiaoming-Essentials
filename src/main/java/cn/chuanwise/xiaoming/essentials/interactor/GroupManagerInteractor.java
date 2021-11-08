@@ -8,14 +8,19 @@ import cn.chuanwise.xiaoming.essentials.configuration.groupManagerConfiguration.
 import cn.chuanwise.xiaoming.annotation.Filter;
 import cn.chuanwise.xiaoming.annotation.FilterParameter;
 import cn.chuanwise.xiaoming.annotation.Required;
+import cn.chuanwise.xiaoming.essentials.listener.GroupManagerListeners;
 import cn.chuanwise.xiaoming.interactor.SimpleInteractors;
 import cn.chuanwise.xiaoming.user.GroupXiaomingUser;
 import cn.chuanwise.xiaoming.user.XiaomingUser;
+import cn.chuanwise.xiaoming.util.MiraiCodeUtil;
 import net.mamoe.mirai.message.code.MiraiCode;
 
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> {
     GroupManagerConfiguration gmConfig;
@@ -59,16 +64,16 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
         gmData = plugin.getGmData();
     }
 
-    @Filter("设置默认禁言时间 {time}")
+    @Filter("(设置|set)(默认|default)(禁言|mute)(时间|time) {time}")
     @Required("essentials.group.set.defaultTime")
     public void setDefaultMuteTime(GroupXiaomingUser user,
                                    @FilterParameter("time") long time) {
         final long group = user.getGroupCode();
 
         try {
-            if (time < (43200L * 60000) && time > 60000) {
-                gmConfig.getDefaultMuteTime().put(group, time / 60000);
-                user.sendMessage("成功设置默认禁言时间为：" + time / 60000 + "分钟");
+            if (time <= TimeUnit.DAYS.toMillis(30) && time >= TimeUnit.MINUTES.toMillis(1)) {
+                gmConfig.getDefaultMuteTime().put(group, (int) TimeUnit.MILLISECONDS.toMinutes(time));
+                user.sendMessage("成功设置默认禁言时间为：" + gmConfig.getDefaultMuteTime().get(group) + "分钟");
                 xiaomingBot.getFileSaver().readyToSave(gmConfig);
             } else {
                 user.sendMessage("「{arg.time}」不是一个有效值哦");
@@ -80,7 +85,6 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
     }
 
     // 禁言
-    @Filter("(禁言|mute) {qq} ")
     @Filter("(禁言|mute) {qq}")
     @Required("essentials.group.mute")
     public void mute(GroupXiaomingUser user,
@@ -88,7 +92,7 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
         user.getContact().getMember(qq)
                 .ifPresentOrElse(member -> {
                     try {
-                        member.mute(gmConfig.getDefaultMuteTime().get(user.getGroupCode()) * 60000);
+                        member.mute(TimeUnit.MINUTES.toMillis(gmConfig.getDefaultMuteTime().get(user.getContact().getCode())));
                         user.sendMessage("成功禁言「{arg.qq}」" + gmConfig.getDefaultMuteTime().get(user.getGroupCode()) + "分钟");
                     } catch (Exception exception) {
                         user.sendMessage("禁言时出现错误，可能是没有权限");
@@ -97,7 +101,7 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
     }
 
     @Filter("(禁言|mute) {qq} {r:time}")
-    @Required("essentials.group.mute.time")
+    @Required("essentials.group.mute")
     public void mute(GroupXiaomingUser user,
                      @FilterParameter("qq") long qq,
                      @FilterParameter("time") long time) {
@@ -112,7 +116,6 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
                 }, () -> user.sendError("「{arg.qq}」不在本群"));
     }
 
-    @Filter("(解除禁言|unmute) {qq} ")
     @Filter("(解除禁言|unmute) {qq}")
     @Required("essentials.group.unmute")
     public void unmute(GroupXiaomingUser user,
@@ -137,9 +140,9 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
                 .ifPresentOrElse(member -> {
                     try {
                         member.kick("");
-                        user.sendMessage("已踢出「{arg.qq}」");
+                        user.sendMessage("已将「{arg.qq}」移出本群");
                     } catch (Exception exception) {
-                        user.sendMessage("禁言时出现错误，可能是没有权限");
+                        user.sendMessage("移出失败");
                     }
                 }, () -> user.sendError("「{arg.qq}」不在本群"));
     }
@@ -148,7 +151,7 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
     @Filter("(屏蔽|ignore)(用户|user) {qq}")
     @Filter("(屏蔽|ignore)(用户|user) {qq} ")
     @Required("essentials.group.ignore.add.user")
-    public void ignoreGroups(GroupXiaomingUser user,
+    public void ignoreGroups(XiaomingUser user,
                              @FilterParameter("qq") long qq) {
         if (!gmConfig.getIgnoreUsers().contains(qq)) {
             try {
@@ -167,7 +170,7 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
 
     @Filter("(取消屏蔽|解除屏蔽|unIgnore)(用户|User) {qq}")
     @Required("essentials.group.ignore.remove.user")
-    public void unIgnore(GroupXiaomingUser user,
+    public void unIgnore(XiaomingUser user,
                          @FilterParameter("qq") long qq) {
         if (gmConfig.getIgnoreUsers().contains(qq)) {
             try {
@@ -204,11 +207,12 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
                                     @FilterParameter("关键词") String entry) {
         final Long group = user.getGroupCode();
 
-        if (!MapUtil.getOrPutSupply(gmData.getGroupKeys(), group, HashSet::new).add(entry)) {
+        if (!MapUtil.getOrPutSupply(gmData.getGroupKeys(), group, HashSet::new).add(MiraiCodeUtil.contentToString(entry))) {
             user.sendMessage("本群已经有关键词「" + entry + "」需要撤回了哦");
         } else {
-            user.sendMessage("成功添加需要撤回的关键词「" + entry + '」');
+            MapUtil.getOrPutSupply(GroupManagerListeners.keys, group, HashSet::new).add(Pattern.compile(MiraiCodeUtil.contentToString(entry), Pattern.CASE_INSENSITIVE));
             xiaomingBot.getFileSaver().readyToSave(gmData);
+            user.sendMessage("成功添加需要撤回的关键词「" + entry + "」");
         }
     }
 
@@ -218,13 +222,17 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
                                        @FilterParameter("关键词") String entry) {
         final Long group = user.getGroupCode();
 
-        if (gmData.getGroupKeys().containsKey(group)) {
-            if (gmData.getGroupKeys().get(group).remove(entry)) {
-                user.sendMessage("成功删除需要撤回的关键词「" + entry + '」');
-                xiaomingBot.getFileSaver().readyToSave(gmData);
-            } else {
-                user.sendMessage("本群没有关键词「" + entry + "」要撤回哦");
+        if (GroupManagerListeners.keys.containsKey(group)) {
+            for (Pattern pattern : GroupManagerListeners.keys.get(group)) {
+                if (pattern.matcher(MiraiCodeUtil.contentToString(entry)).matches()) {
+                    GroupManagerListeners.keys.get(group).remove(pattern);
+                    gmData.getGroupKeys().get(group).remove(pattern.pattern());
+                    xiaomingBot.getFileSaver().readyToSave(gmData);
+                    user.sendMessage("成功删除需要撤回的关键词「" + xiaomingBot.getSerializer().serialize(pattern.pattern()).replaceAll("\"", "") + '」');
+                    return;
+                }
             }
+            user.sendMessage("本群没有关键词「" + entry + "」要撤回哦");
         } else {
             user.sendMessage("本群没有关键词「" + entry + "」要撤回哦");
         }

@@ -5,6 +5,7 @@ import cn.chuanwise.xiaoming.essentials.configuration.coreManagerConfiguration.C
 import cn.chuanwise.xiaoming.annotation.Filter;
 import cn.chuanwise.xiaoming.annotation.FilterParameter;
 import cn.chuanwise.xiaoming.annotation.Required;
+import cn.chuanwise.xiaoming.essentials.listener.CoreManagerListener;
 import cn.chuanwise.xiaoming.interactor.SimpleInteractors;
 import cn.chuanwise.xiaoming.plugin.PluginHandler;
 import cn.chuanwise.xiaoming.user.XiaomingUser;
@@ -156,13 +157,14 @@ public class CoreManagerInteractor extends SimpleInteractors<EssentialsPlugin> {
             user.sendMessage("「" + count + "」不是一个有效值哦");
         } else {
             coreConfig.getCallLimit().maxCall = count;
+            CoreManagerListener.callLimit.clear();
             user.sendMessage("成功将最大调用次数设置为「" + coreConfig.getCallLimit().getMaxCall() + "次」");
             xiaomingBot.getFileSaver().readyToSave(coreConfig);
         }
     }
 
     @Filter("(屏蔽|ignore)(插件|plugin) {r:插件}")
-    @Required("essentials.core.ignore.add")
+    @Required("essentials.core.plugin.ban")
     public void addIgnorePlugin(XiaomingUser user, @FilterParameter("插件") PluginHandler plugin) {
         final String name = plugin.getName();
         if (!coreConfig.getBannedPlugins().contains(name)) {
@@ -174,8 +176,7 @@ public class CoreManagerInteractor extends SimpleInteractors<EssentialsPlugin> {
             if (Objects.equals(getPlugin().getName(), name)) {
                 user.sendMessage("确定要屏蔽「" + name + "」本身吗？这将导致插件「" + name + "」不可启用，除非更改配置文件！\n" +
                         "请在10秒内回复「确定」来屏蔽「" + name + "」插件，超时或其他回复都将取消屏蔽");
-                String reply = user.nextMessageOrExit(10000).serialize();
-                if (reply.equals("确定")) {
+                if (Objects.equals(user.nextMessageOrExit(10000).serialize(), "确定")) {
                     user.sendMessage("即将屏蔽插件「" + name + "」");
                 } else {
                     user.sendMessage("已取消屏蔽");
@@ -193,8 +194,8 @@ public class CoreManagerInteractor extends SimpleInteractors<EssentialsPlugin> {
             user.sendMessage("插件「" + name + "」已被屏蔽");
     }
 
-    @Filter("(取消|解除|un)(屏蔽|ignore)(插件|plugin) {r:插件}")
-    @Required("essentials.core.ignore.remove")
+    @Filter("(取消|解除|un|cancel)(屏蔽|ignore)(插件|plugin) {r:插件}")
+    @Required("essentials.core.plugin.unban")
     public void removeIgnorePlugin(XiaomingUser user, @FilterParameter("插件") PluginHandler plugin) {
         String name = plugin.getName();
         if (coreConfig.getBannedPlugins().contains(name)) {

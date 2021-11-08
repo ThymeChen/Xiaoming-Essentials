@@ -13,25 +13,40 @@ import cn.chuanwise.xiaoming.event.SimpleListeners;
 import cn.chuanwise.xiaoming.listener.ListenerPriority;
 import cn.chuanwise.xiaoming.user.GroupXiaomingUser;
 import cn.chuanwise.xiaoming.user.XiaomingUser;
+import lombok.Getter;
 import net.mamoe.mirai.message.code.MiraiCode;
 import net.mamoe.mirai.message.data.MessageChain;
+import org.apache.commons.lang.time.StopWatch;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+@Getter
 public class CoreManagerListener extends SimpleListeners<EssentialsPlugin> {
-    CoreManagerConfiguration coreConfiguration;
+    public static Map<Long, List<InteractEvent>> callLimit = new HashMap<>();
 
-    Map<Long, List<InteractEvent>> callLimit = new HashMap<>();
+    StopWatch watch = new StopWatch();
+    private void watch() {
+        xiaomingBot.getScheduler().run(() -> {
+            if (watch.getTime() == 0) {
+                watch.start();
 
-    @Override
-    public void onRegister() {
-        coreConfiguration = plugin.getCoreConfig();
+                while (watch.getTime() < TimeUnit.MINUTES.toMillis(1)) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ignored) {
+
+                    }
+                }
+                watch.reset();
+            }
+        });
     }
 
     // 明确调用
     @EventListener(priority = ListenerPriority.HIGH)
     public void onMessageEvent(MessageEvent messageEvent) {
+        CoreManagerConfiguration coreConfiguration = plugin.getCoreConfig();
         final XiaomingUser user = messageEvent.getUser();
         if (!(user instanceof GroupXiaomingUser) || !coreConfiguration.isEnableClearCall())
             return;
@@ -66,6 +81,7 @@ public class CoreManagerListener extends SimpleListeners<EssentialsPlugin> {
     // 调用限制
     @EventListener(priority = ListenerPriority.HIGH)
     public void callLimit(InteractEvent interactEvent) {
+        CoreManagerConfiguration coreConfiguration = plugin.getCoreConfig();
         XiaomingUser user = interactEvent.getContext().getUser();
         final int maxSize = coreConfiguration.getCallLimit().getMaxCall();
 
@@ -80,19 +96,20 @@ public class CoreManagerListener extends SimpleListeners<EssentialsPlugin> {
             final long maxTime = sysTime - limit.get(0).getContext().getMessage().getTime();
             final long minTime = sysTime - limit.get(limit.size() - 1).getContext().getMessage().getTime();
 
-            if (minTime < TimeUnit.SECONDS.toMillis(coreConfiguration.getCallLimit().getCooldown())) {
+            if (minTime <= TimeUnit.SECONDS.toMillis(coreConfiguration.getCallLimit().getCooldown())) {
                 interactEvent.cancel();
-                user.sendMessage("调用未冷却");
-            } else if (limit.size() == coreConfiguration.getCallLimit().getMaxCall()
-                    && maxTime > TimeUnit.SECONDS.toMillis(coreConfiguration.getCallLimit().getPeriod())) {
-                limit.remove(0);
-                limit.add(interactEvent);
-            } else if (limit.size() == coreConfiguration.getCallLimit().getMaxCall()
-                    && maxTime < TimeUnit.SECONDS.toMillis(coreConfiguration.getCallLimit().getPeriod())) {
+                if (watch.getTime() == 0)
+                    user.sendMessage("调用未冷却");
+                watch();
+            } else if (limit.size() >= coreConfiguration.getCallLimit().getMaxCall()
+                    && maxTime <= TimeUnit.SECONDS.toMillis(coreConfiguration.getCallLimit().getPeriod())) {
                 interactEvent.cancel();
-                user.sendMessage("已达本群调用限制");
-            } else
+                if (watch.getTime() == 0)
+                    user.sendMessage("已达本群调用限制");
+                watch();
+            } else {
                 limit.add(interactEvent);
+            }
         } else
             limit.add(interactEvent);
     }

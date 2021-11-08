@@ -12,6 +12,7 @@ public class CoreManagerConfiguration extends AbstractPreservable {
     public String clearCall = null;
     public String groupTag = "clear-call";
     public CallLimitConfiguration callLimit = new CallLimitConfiguration();
+    public int messagesCache = 50;
 
     public Set<String> bannedPlugins = new HashSet<>();
 }

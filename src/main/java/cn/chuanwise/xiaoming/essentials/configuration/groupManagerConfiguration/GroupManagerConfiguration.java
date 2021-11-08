@@ -7,7 +7,7 @@ import java.util.*;
 
 @Getter
 public class GroupManagerConfiguration extends AbstractPreservable {
-    public Map<Long, Long> defaultMuteTime = new HashMap<>();   // 默认禁言时间，单位：分钟
+    public Map<Long, Integer> defaultMuteTime = new HashMap<>();   // 默认禁言时间，单位：分钟
     public List<Long> ignoreUsers = new ArrayList<>();  // 屏蔽
     public Map<Long, Boolean> antiRecall = new HashMap<>(); // 防撤回
     public Map<Long, Boolean> antiFlash = new HashMap<>();  // 防闪照

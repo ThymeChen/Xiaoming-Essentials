@@ -5,9 +5,9 @@ import cn.chuanwise.xiaoming.essentials.configuration.groupManagerConfiguration.
 import cn.chuanwise.xiaoming.essentials.configuration.coreManagerConfiguration.CoreManagerConfiguration;
 import cn.chuanwise.xiaoming.essentials.interactor.GroupManagerInteractor;
 import cn.chuanwise.xiaoming.essentials.interactor.CoreManagerInteractor;
+import cn.chuanwise.xiaoming.essentials.interactor.RemoteInteractor;
 import cn.chuanwise.xiaoming.essentials.listener.GroupManagerListeners;
 import cn.chuanwise.xiaoming.essentials.listener.CoreManagerListener;
-import cn.chuanwise.xiaoming.group.GroupInformation;
 import cn.chuanwise.xiaoming.plugin.JavaPlugin;
 import lombok.Getter;
 import net.mamoe.mirai.contact.Group;
@@ -46,45 +46,37 @@ public class EssentialsPlugin extends JavaPlugin {
                 "                @Thyme_Chen\n");
 
         initConfig();
-        xiaomingBot.getScheduler().runLater(5000, this::ignorePlugins);
+        xiaomingBot.getScheduler().runLater(5000, this::banPlugins);
 
         xiaomingBot.getInteractorManager().registerInteractors(new CoreManagerInteractor(), this);
         xiaomingBot.getInteractorManager().registerInteractors(new GroupManagerInteractor(), this);
+        xiaomingBot.getInteractorManager().registerInteractors(new RemoteInteractor(), this);
 
         xiaomingBot.getFileSaver().readyToSave(gmConfig);
         xiaomingBot.getFileSaver().readyToSave(gmData);
         xiaomingBot.getFileSaver().readyToSave(coreConfig);
     }
 
-    @Override
-    public void onDisable() {
-        getXiaomingBot().getScheduler().stop();
-    }
-
     private void initConfig() {
         for (Group group : xiaomingBot.getMiraiBot().getGroups()) {
             long groupId = group.getId();
             if (!gmConfig.getDefaultMuteTime().containsKey(groupId))
-                gmConfig.getDefaultMuteTime().put(groupId, 10L);
+                gmConfig.getDefaultMuteTime().put(groupId, 10);
 
             if (!gmConfig.getAutoReject().containsKey(groupId))
                 gmConfig.getAutoReject().put(groupId, false);
         }
     }
 
-    private void ignorePlugins() {
+    private void banPlugins() {
         while (true) {
-            if (getXiaomingBot().isDisabled())
-                return;
             for (String name : coreConfig.getBannedPlugins()) {
-                if (xiaomingBot.getPluginManager().isLoaded(name))
+                if (xiaomingBot.getPluginManager().isEnabled(name))
                     xiaomingBot.getPluginManager().disablePlugin(name);
             }
             try {
                 Thread.sleep(TimeUnit.SECONDS.toMillis(60));
-            } catch (InterruptedException ignored) {
-
-            }
+            } catch (InterruptedException ignored) {}
         }
     }
 }
