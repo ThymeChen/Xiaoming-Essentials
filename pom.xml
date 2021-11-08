@@ -6,7 +6,7 @@
 
     <groupId>cn.chuanwise</groupId>
     <artifactId>Xiaoming-Essentials</artifactId>
-    <version>1.0.4-dev</version>
+    <version>1.0.8.2-dev</version>
 
     <build>
         <plugins>
@@ -17,6 +17,24 @@
                     <source>11</source>
                     <target>11</target>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
@@ -34,6 +52,13 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.22</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>20030203.000129</version>
         </dependency>
 
         <dependency>
@@ -41,7 +66,7 @@
             <artifactId>xiaoming-core</artifactId>
             <version>4.0</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/xiaoming-core-4.0.7-exp.jar</systemPath>
+            <systemPath>${project.basedir}/lib/xiaoming-core-4.0.8-exp.jar</systemPath>
         </dependency>
 
         <dependency>
@@ -49,7 +74,7 @@
             <artifactId>xiaoming-api</artifactId>
             <version>4.0</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/xiaoming-api-4.0.7-exp.jar</systemPath>
+            <systemPath>${project.basedir}/lib/xiaoming-api-4.0.8-exp.jar</systemPath>
         </dependency>
     </dependencies>
 </project>
