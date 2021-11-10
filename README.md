@@ -25,7 +25,7 @@
 | cooldown | int | 5 | 调用冷却（需要将 enableCallLimit 设置为 true） |
 | period | int | 300 | 调用周期（需要将 enableCallLimit 设置为 true） |
 | maxCall | int | 10 | 调用周期内允许的最大调用次数（需要将 enableCallLimit 设置为 true） |
-| messageCache | int | 50 | 消息缓存队列的最大长度 |
+| maxMessageCache | int | 50 | 消息缓存队列的最大长度 |
 | bannedPlugins | Set<String> | 无 | 要屏蔽的插件（插件名的散列，默认为空） |
   
 ## GroupManager
