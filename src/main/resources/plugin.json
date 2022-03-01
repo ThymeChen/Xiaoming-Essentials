@@ -1,0 +1,7 @@
+{
+  "main": "cn.thymechen.xiaoming.EssentialsPlugin",
+  "name": "Essentials",
+  "alias": "基础插件",
+  "author": "ThymeChen",
+  "version": "2.0.0.7-dev"
+}
