@@ -18,13 +18,11 @@ import cn.chuanwise.xiaoming.user.GroupXiaoMingUser;
 import cn.chuanwise.xiaoming.user.PrivateXiaoMingUser;
 import cn.chuanwise.xiaoming.user.XiaoMingUser;
 
+import cn.thymechen.xiaoming.util.StringTemplate;
 import cn.thymechen.xiaoming.util.VerifyImage;
 import net.mamoe.mirai.event.events.*;
 import net.mamoe.mirai.message.code.MiraiCode;
-import net.mamoe.mirai.message.data.At;
-import net.mamoe.mirai.message.data.FlashImage;
-import net.mamoe.mirai.message.data.MessageChain;
-import net.mamoe.mirai.message.data.PlainText;
+import net.mamoe.mirai.message.data.*;
 import net.mamoe.mirai.utils.ExternalResource;
 import org.jetbrains.annotations.NotNull;
 
@@ -32,6 +30,8 @@ import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,7 +43,13 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
     public static Map<Long, Set<Pattern>> keys = new ConcurrentHashMap<>();     // 关键词的正则表达式
     public static Map<Long, Set<Pattern>> verify = new ConcurrentHashMap<>();   // 加群审核
     public static List<MessageEvent> messageEvents;     // 最近消息缓存
+    public static Map<String, Object> welcomeParamMap = new ConcurrentHashMap<>();
 
+    StringTemplate stringTemplate = new StringTemplate(welcomeParamMap);
+
+    /**
+     * 监听器初始化
+     */
     @Override
     public void onRegister() {
         messageEvents = new SizedCopyOnWriteArrayList<>(plugin.getCoreConfig().getMaxMessagesCache());
@@ -75,15 +81,33 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
                 }
             }
         }
+        // 添加占位符
+        {
+            /* 群信息 */
+            welcomeParamMap.put("welcome_group_name", new Object());    // 解析为 群名
+            welcomeParamMap.put("welcome_group_code", new Object());    // 解析为 群号
+            welcomeParamMap.put("welcome_group_atall", new Object());   // 解析为 @全体
+            /* 新人信息 */
+            welcomeParamMap.put("welcome_joiner_at", new Object());     // 解析为 @新人
+            welcomeParamMap.put("welcome_joiner_name", new Object());   // 解析为 新人昵称
+            welcomeParamMap.put("welcome_joiner_code", new Object());   // 解析为 新人QQ号
+            welcomeParamMap.put("welcome_joiner_avatar", new Object());     // 解析为 新人头像
+        }
     }
 
-    // 将消息加进缓存
+    /**
+     * 将消息加进缓存
+     * @param event 消息事件
+     */
     @EventListener(listenCancelledEvent = true)
-    public void addMessageEvents(MessageEvent event) {
+    public void addMessages(MessageEvent event) {
         messageEvents.add(event);
     }
 
-    // bot加入新群
+    /**
+     * bot 加群
+     * @param botJoinGroupEvent bot 入群
+     */
     @EventListener
     public void joinNewGroup(@NotNull BotJoinGroupEvent botJoinGroupEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
@@ -96,7 +120,10 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         xiaoMingBot.getFileSaver().readyToSave(gmConfiguration);
     }
 
-    // bot退出群聊
+    /**
+     * bot 退群
+     * @param event bot 退群
+     */
     @EventListener
     public void botLeaveGroup(@NotNull BotLeaveEvent event) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
@@ -109,7 +136,10 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         xiaoMingBot.getFileSaver().readyToSave(gmConfiguration);
     }
 
-    // 屏蔽（取消 MessageEvent）
+    /**
+     * 屏蔽（取消 MessageEvent)
+     * @param messageEvent 消息事件
+     */
     @EventListener(priority = ListenerPriority.HIGH)
     public void matchIgnoreUsers(@NotNull MessageEvent messageEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
@@ -120,7 +150,10 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         }
     }
 
-    // 关键词撤回（最高优先级，不受 ignoreUsers 影响）
+    /**
+     * 关键词撤回（最高优先级，不受 ignoreUsers 影响）
+     * @param messageEvent 消息事件
+     */
     @EventListener(priority = ListenerPriority.HIGHEST)
     public void recallKey(@NotNull MessageEvent messageEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
@@ -162,7 +195,10 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         }
     }
 
-    // 迎新
+    /**
+     * 迎新
+     * @param joinEvent 新成员加入
+     */
     @EventListener
     public void join(@NotNull MemberJoinEvent joinEvent) {
         final GroupManagerData gmData = plugin.getGmData();
@@ -171,13 +207,38 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         final long qq = joinEvent.getMember().getId();
 
         if (gmData.join.containsKey(group)) {
-            if (gmData.join.get(group) != null)
-                xiaoMingBot.getContactManager().sendGroupMessage(group,
-                        new At(qq).serializeToMiraiCode() + ' ' + gmData.getJoin().get(group));
+            if (gmData.join.get(group) != null) {
+                String template = gmData.getJoin().get(group);
+
+                stringTemplate.setPrefix("{");
+                stringTemplate.setSuffix("}");
+
+                welcomeParamMap.replace("welcome_group_code", group);
+                welcomeParamMap.replace("welcome_group_name", joinEvent.getGroup().getName());
+                welcomeParamMap.replace("welcome_group_atall", AtAll.INSTANCE.serializeToMiraiCode());
+
+                welcomeParamMap.replace("welcome_joiner_at", new At(qq).serializeToMiraiCode());
+                welcomeParamMap.replace("welcome_joiner_name", joinEvent.getUser().getNick());
+                welcomeParamMap.replace("welcome_joiner_code", joinEvent.getUser().getId());
+                try(
+                        InputStream inputStream = new URL(joinEvent.getUser().getAvatarUrl()).openStream();
+                        ExternalResource externalResource = ExternalResource.create(inputStream)
+                ) {
+                    welcomeParamMap.replace("welcome_joiner_avatar", joinEvent.getUser().uploadImage(externalResource).serializeToMiraiCode());
+                } catch (IOException e) {
+                    welcomeParamMap.replace("welcome_joiner_avatar", "\n无法获取头像！\n");
+                    getLogger().error("无法获取头像", e);
+                }
+
+                xiaoMingBot.getContactManager().sendGroupMessage(group, stringTemplate.replace(template));
+            }
         }
     }
 
-    // 防撤回
+    /**
+     * 防撤回
+     * @param recall 撤回事件
+     */
     @EventListener(priority = ListenerPriority.LOW, listenCancelledEvent = true)
     public void antiRecall(@NotNull MessageRecallEvent.GroupRecall recall) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
@@ -218,7 +279,10 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         }
     }
 
-    // 防闪照
+    /**
+     * 防闪照
+     * @param groupMessageEvent 群聊消息
+     */
     @EventListener
     public void antiFlash(@NotNull GroupMessageEvent groupMessageEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
@@ -244,7 +308,10 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         xiaoMingBot.getContactManager().getGroupContact(group).get().sendMessage(new PlainText(flashImage.toString()));
     }
 
-    // 根据 miraiCode 发送闪照原图（仅限私聊）
+    /**
+     * 根据 miraiCode 发送闪照原图（仅限私聊）
+     * @param messageEvent 消息事件
+     */
     @EventListener
     public void flash(@NotNull MessageEvent messageEvent) {
         GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
@@ -267,7 +334,10 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         StringBuffer stringBuffer = new StringBuffer();
     }
 
-    // 加群自动审核
+    /**
+     * 加群自动审核
+     * @param requestEvent 入群请求
+     */
     @EventListener
     public void autoVerify(@NotNull MemberJoinRequestEvent requestEvent) {
         final GroupManagerConfiguration gmConfiguration = plugin.getGmConfig();
@@ -314,22 +384,28 @@ public class GroupManagerListeners extends SimpleListeners<EssentialsPlugin> {
         }
     }
 
-    // 永久禁言
+    /**
+     * 永久禁言
+     * @param event 管理员取消禁言
+     */
     @EventListener
     public void mute(@NotNull MemberUnmuteEvent event) {
         GroupManagerConfiguration gmConfig = plugin.getGmConfig();
-        long group = event.getGroupId();
-        Optional<GroupContact> groupContact = xiaoMingBot.getContactManager().getGroupContact(group);
-        Map<Long, List<Long>> mute = new ConcurrentHashMap<>();
+        long groupCode = event.getGroupId();
+        Optional<GroupContact> groupContact = xiaoMingBot.getContactManager().getGroupContact(groupCode);
+        Map<Long, List<Long>> mute = gmConfig.getMuteForever();
 
         groupContact.flatMap(contact -> contact.getMember(event.getMember().getId()))
                 .ifPresent(member -> {
-                    if (Maps.getOrPutSupply(mute, group, ArrayList::new).contains(member.getCode()))
+                    if (Maps.getOrPutSupply(mute, groupCode, ArrayList::new).contains(member.getCode()))
                         member.mute(TimeUnit.DAYS.toMillis(30));
                 });
     }
 
-    // 入群验证
+    /**
+     * 入群验证
+     * @param event 成员入群事件
+     */
     @EventListener
     public void memberJoinVerify(@NotNull MemberJoinEvent event) {
         GroupManagerConfiguration gmConfig = plugin.getGmConfig();

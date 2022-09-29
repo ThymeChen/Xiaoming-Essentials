@@ -6,7 +6,7 @@
 
     <groupId>cn.thymechen</groupId>
     <artifactId>Xiaoming-Essentials</artifactId>
-    <version>2.0.0.7-dev</version>
+    <version>2.0.1.1-dev</version>
 
     <build>
         <plugins>
@@ -69,11 +69,38 @@
             <version>2.6</version>
         </dependency>
 
+<!--        <dependency>-->
+<!--            <groupId>org.apache.commons</groupId>-->
+<!--            <artifactId>commons-text</artifactId>-->
+<!--            <version>1.9</version>-->
+<!--        </dependency>-->
+
         <dependency>
             <groupId>cn.chuanwise</groupId>
             <artifactId>XiaoMingBot</artifactId>
             <version>4.8.2</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/XiaoMingCore-4.8.2.jar</systemPath>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.24</version>
             <scope>provided</scope>
         </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+
+<!--        <dependency>-->
+<!--            <groupId>com.alibaba</groupId>-->
+<!--            <artifactId>fastjson</artifactId>-->
+<!--            <version>1.2.80</version>-->
+<!--        </dependency>-->
     </dependencies>
 </project>

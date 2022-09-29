@@ -28,20 +28,19 @@ public class CoreManagerInteractor extends SimpleInteractors<EssentialsPlugin> {
         if (coreConfig.isEnableClearCall()) {
             user.sendMessage("明确调用已经开启过了哦");
         } else {
-            if (!Objects.isNull(coreConfig.getClearCall()) || !coreConfig.getClearCall().isEmpty()) {
-                coreConfig.enableClearCall = true;
+            if (!coreConfig.getClearCall().isEmpty() && !coreConfig.getClearCall().isBlank()) {
+                coreConfig.setEnableClearCall(true);
                 user.sendMessage("成功启动明确调用，未来我在具备「" + coreConfig.getGroupTag() + "」" +
                         "标记的群里只会注意「" + coreConfig.getClearCall() + "」开头的消息啦");
-
             } else {
                 user.sendMessage("以什么开头的消息需要被小明响应呢？在下面告诉小明吧");
-                coreConfig.clearCall = user.nextMessageOrExit().serialize();
-                user.sendMessage("成功设置调用头为「" + coreConfig.clearCall + "」，" +
+                coreConfig.setClearCall(user.nextMessageOrExit().serialize());
+                user.sendMessage("成功设置调用头为「" + coreConfig.getClearCall() + "」，" +
                         "未来我在具备「" + coreConfig.getGroupTag() + "」" +
                         "标记的群里只会注意「" + coreConfig.getClearCall() + "」开头的消息啦");
 
             }
-            coreConfig.enableClearCall = true;
+            coreConfig.setEnableClearCall(true);
             xiaoMingBot.getFileSaver().readyToSave(coreConfig);
         }
     }
@@ -61,7 +60,7 @@ public class CoreManagerInteractor extends SimpleInteractors<EssentialsPlugin> {
     @Required("essentials.core.clearCall.disable")
     public void clearCall(XiaoMingUser user) {
         if (coreConfig.isEnableClearCall()) {
-            coreConfig.enableClearCall = false;
+            coreConfig.setEnableClearCall(false);
             user.sendMessage("成功关闭明确调用");
             xiaoMingBot.getFileSaver().readyToSave(coreConfig);
         } else {
@@ -77,7 +76,7 @@ public class CoreManagerInteractor extends SimpleInteractors<EssentialsPlugin> {
             return;
         }
 
-        coreConfig.clearCall = head;
+        coreConfig.setClearCall(head);
         user.sendMessage("成功修改调用头为「" + coreConfig.getClearCall() + "」");
         xiaoMingBot.getFileSaver().readyToSave(coreConfig);
     }

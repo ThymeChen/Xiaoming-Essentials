@@ -1,24 +1,25 @@
 package cn.thymechen.xiaoming;
 
+import cn.chuanwise.xiaoming.plugin.JavaPlugin;
+import cn.thymechen.xiaoming.configuration.coreManagerConfiguration.CoreManagerConfiguration;
 import cn.thymechen.xiaoming.configuration.groupManagerConfiguration.GroupManagerConfiguration;
 import cn.thymechen.xiaoming.configuration.groupManagerConfiguration.GroupManagerData;
-import cn.thymechen.xiaoming.configuration.coreManagerConfiguration.CoreManagerConfiguration;
-import cn.thymechen.xiaoming.interactor.GroupManagerInteractor;
 import cn.thymechen.xiaoming.interactor.CoreManagerInteractor;
+import cn.thymechen.xiaoming.interactor.GroupManagerInteractor;
 import cn.thymechen.xiaoming.interactor.RemoteInteractor;
-import cn.thymechen.xiaoming.listener.GroupManagerListeners;
 import cn.thymechen.xiaoming.listener.CoreManagerListener;
-import cn.chuanwise.xiaoming.plugin.JavaPlugin;
+import cn.thymechen.xiaoming.listener.GroupManagerListeners;
 import lombok.Getter;
 import net.mamoe.mirai.contact.Group;
 
-import java.io.*;
+import java.io.File;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @Getter
+@SuppressWarnings("all")
 public class EssentialsPlugin extends JavaPlugin {
     public static final EssentialsPlugin INSTANCE = new EssentialsPlugin();
 
@@ -26,7 +27,7 @@ public class EssentialsPlugin extends JavaPlugin {
     GroupManagerData gmData;
     CoreManagerConfiguration coreConfig;
 
-    public List getIgnoreUsers() {
+    public List<Long> getIgnoreUsers() {
         return INSTANCE.getGmConfig().getIgnoreUsers();
     }
 
@@ -39,6 +40,9 @@ public class EssentialsPlugin extends JavaPlugin {
 
         xiaoMingBot.getEventManager().registerListeners(new CoreManagerListener(), this);
         xiaoMingBot.getEventManager().registerListeners(new GroupManagerListeners(), this);
+
+        if (Objects.isNull(coreConfig.getClearCall()))
+            coreConfig.setClearCall("");
 
 //        new Thread(() -> {
 //            xiaoMingBot.stop();

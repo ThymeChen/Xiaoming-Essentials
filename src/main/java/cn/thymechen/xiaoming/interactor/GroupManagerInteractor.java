@@ -478,12 +478,14 @@ public class GroupManagerInteractor extends SimpleInteractors<EssentialsPlugin> 
     }
 
     @Filter("反序列化 {r:r}")
+    @Required("essentials.group.deserialize")
     public void Deserialized(XiaoMingUser user, @FilterParameter("r") String str) {
         String deserialized = MiraiCode.deserializeMiraiCode(str).contentToString();
         user.sendMessage(deserialized);
     }
 
     @Filter("序列化 {r:r}")
+    @Required("essentials.group.serialize")
     public void Serialized(XiaoMingUser user, @FilterParameter("r") String str) {
         MessageChain serialized = MiraiCodes.asMessageChain(str);
         user.sendMessage(serialized);

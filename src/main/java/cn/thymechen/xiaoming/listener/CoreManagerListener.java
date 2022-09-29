@@ -81,7 +81,7 @@ public class CoreManagerListener extends SimpleListeners<EssentialsPlugin> {
 
         String groupTag = coreConfiguration.getGroupTag();
         if (StringUtil.isEmpty(groupTag)) {
-            coreConfiguration.groupTag = "clear-call";
+            coreConfiguration.setGroupTag("clear-call");
             getLogger().error("明确调用生效的群聊标签为空，将使用默认标签「" + coreConfiguration.getGroupTag() + "」");
             xiaoMingBot.getFileSaver().readyToSave(coreConfiguration);
             return;
